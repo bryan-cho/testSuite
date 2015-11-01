@@ -56,3 +56,16 @@ Here are some options that work with runSuite:
 `-sr` - enable `--show-reachable=yes` option for valgrind
 
 `-stderr` - show messages to stderr. By default, stderr messages from the program will not show when using runSuite.
+
+#### createSuite:
+
+For convenience, there is a script `createSuite` provided to easily make suite files for tests in the current directory.
+
+Simply run the script with a name for the suite file and the suite file will be generated in the current directory.
+
+Usage:
+
+```bash
+createSuite suitefile.txt
+```
+
