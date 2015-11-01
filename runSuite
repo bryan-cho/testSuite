@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# Initial variables
+successes=0
+failures=0
+missing=0
+RED='\033[0;31m'
+DEFAULT='\033[0m'
+WHITE='\033[1;37m'
+BLUE='\033[0;34m'
+DIVIDER="${WHITE}-------------------------------------------${DEFAULT}"
+
+# Checks for the correct number of arguments
+if [ ${#} -lt 2 ] || [ ${#} -gt 6 ]; then
+    echo -e "${RED}Usage: ${0} suite-file program [-valgrind] [-v] [-sr] [-stderr]${DEFAULT}"
+    exit 2
+fi
+
+suite=${1}
+program=${2}
+verbose=false
+showReachable=false
+showStderr=false
+runValgrind=false
+
+# Checks if suite file exists and is readable
+if [ ! -r "${suite}" ]; then
+    echo -e "${RED}Suite file does not exist or is not readable. Aborting.${DEFAULT}"
+    exit 2
+fi 
+
+# Sets options before running tests
+shift 2
+for option in ${@};
+do
+    if [ ${option} = "-valgrind" ]; then
+        runValgrind=true
+    elif [ ${option} = "-v" ]; then
+        verbose=true
+    elif [ ${option} = "-sr" ]; then
+        showReachable=true
+    elif [ ${option} = "-stderr" ]; then
+        showStderr=true
+    else
+        echo -e "${RED}Usage: ${0} suite-file program [-v] [-sr] [-stderr]${DEFAULT}"
+        exit 2
+    fi
+done
+
+# Read fileStems from suite file
+while read fileStem; do
+    echo -en ${DEFAULT}
+    # Check if .in or .out file is missing or is not readable
+    # Using separate checks to be more specific about the error
+    if [ ! -f "${fileStem}.in" ]; then
+        # MISSING - skip current test and print error message 
+        echo -e "${RED}${fileStem}.in does not exist!${DEFAULT}" >&2
+        missing=$((missing + 1))
+        continue
+    elif [ ! -r "${fileStem}.in" ]; then
+        echo -e "${RED}${fileStem}.in is not readable!${DEFAULT}" >&2
+        missing=$((missing + 1))
+        continue
+    elif  [ ! -f "${fileStem}.out" ]; then
+        echo -e "${RED}${fileStem}.out does not exist!${DEFAULT}" >&2 
+        missing=$((missing + 1))
+        continue
+    elif [ ! -r "${fileStem}.out" ]; then
+        echo -e "${RED}${fileStem}.out is not readable!${DEFAULT}" >&2
+        missing=$((missing + 1))
+        continue
+    fi
+    # Make temp file to store results 
+    tempFile=`mktemp -t temp`
+    echo -e "${WHITE}Running test: ${fileStem}...${DEFAULT}"
+    # Check for memory errors using valgrind if option is enabled 
+    if [ ${runValgrind} = true]; then
+        if [ ${verbose} = true ]; then
+            valgrind --leak-check=full -v "${program}" < "${fileStem}.in" &> "${fileStem}.valg"
+        elif [ ${showReachable} = true ]; then 
+            valgrind --leak-check=full --show-reachable=yes "${program}" < "${fileStem}.in" &> "${fileStem}.valg"
+        elif [ ${verbose} = true ] && [ ${showReachable} = true ]; then 
+            valgrind --leak-check=full --show-reachable=yes -v "${program}" < "${fileStem}.in" &> "${fileStem}.valg"
+        else  
+            valgrind --leak-check=full "${program}" < "${fileStem}.in" &> "${fileStem}.valg"
+        fi
+        grep -q "ERROR SUMMARY: 0 errors" "${fileStem}.valg"
+        if [ $? -ne 0 ]; then
+            # FAILURE - memory error detected, skip current test
+            echo -e "${RED}Memory error for test: ${fileStem}${DEFAULT}"
+            cat "${fileStem}.valg"
+            rm "${fileStem}.valg"
+            failures=$((failures + 1))
+            continue
+        fi
+        rm "${fileStem}.valg"
+    fi
+    # No memory leak so continue testing program
+    # Set color to red for stderr messages:
+    echo -en "${RED}"
+    # Run the program using "stem".in as input and store in temp file
+    # Pass in arguments if "stem".args exists
+    # Only show stderr messages if option is provided
+    if [ -f "${fileStem}.args" ]; then
+        args=`cat "${fileStem}.args"`
+        if [ ${showStderr} = true ]; then
+            ${program} ${args} < "${fileStem}.in" > "${tempFile}"
+        else  
+            ${program} ${args} < "${fileStem}.in" > "${tempFile}" 2> /dev/null
+        fi
+    else
+        if [ ${showStderr} = true ]; then
+            ${program} < "${fileStem}.in" > "${tempFile}"
+        else  
+            ${program} < "${fileStem}.in" > "${tempFile}" 2> /dev/null
+        fi
+    fi
+    # Reset color
+    echo -en ${DEFAULT}
+    # Diff the results with the expected outcome, "stem".out
+    # Store diff in "stem".diff
+    diff "${tempFile}" "${fileStem}.out" > "${fileStem}.diff"
+    # Print error message if results are not correct
+    if [ $? -ne 0 ]; then
+        # FAILURE
+        failures=$((failures + 1))
+        echo -e ${DIVIDER}
+        echo -e "${RED}Test failed:${DEFAULT} ${fileStem}"
+        echo -e "${WHITE}Input:${DEFAULT}"
+        cat "${fileStem}.in"
+        echo -e "${WHITE}Expected:${DEFAULT}"
+        cat "${fileStem}.out"
+        echo -e "${WHITE}Actual:${DEFAULT}"
+        cat "${tempFile}"
+        echo -e "${WHITE}Diff:${DEFAULT}"
+        cat "${fileStem}.diff"
+    else
+        # SUCCESS
+        successes=$((successes + 1))
+        echo -e "${WHITE}Test complete! No errors found.${DEFAULT}"
+    fi
+    # Remove temp file
+    rm "${tempFile}"
+    rm "${fileStem}.diff"
+done < "${suite}" # Pass in suite file
+# Reset color
+echo -en ${DEFAULT}
+echo "Tests passed: ${successes}."
+echo -e "${RED}Tests failed: ${failures}.${DEFAULT}"
+echo -e "${WHITE}Tests missing: ${missing}.${DEFAULT}"

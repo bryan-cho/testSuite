@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ ${#} -ne 1 ]; then
+    echo -e "${RED}Usage: ${0} suite-file${DEFAULT}"
+    exit 1
+fi
+
+ls *.in | sed -e 's/\..*$//' | cat > ${1}
