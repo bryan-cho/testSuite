@@ -1,8 +1,10 @@
 #!/bin/bash
 
+# Checks for correct number of arguments
 if [ ${#} -ne 1 ]; then
     echo -e "${RED}Usage: ${0} suite-file${DEFAULT}"
     exit 1
 fi
 
+# Creates a testing suite file with file stems of .in files in current directory
 ls *.in | sed -e 's/\..*$//' | cat > ${1}
