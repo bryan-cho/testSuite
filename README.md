@@ -5,6 +5,9 @@ Testing script  made to test small C++ programs using bash.
 Contains: 
 
 * [runSuite](#runsuite) - the actual testing script
+    * [Aliasing](#aliasing)
+    * [Usage](#usage)
+    * [Options](#options)
 * [createSuite](#createsuite) - script that generates suite files for your convenience.
 
 ## runSuite
@@ -70,15 +73,15 @@ By default, runSuite will simply run the program with the provided `.in` and `.o
 
 Here are some options that work with runSuite:
 
-`-valgrind` - check your program for memory leaks by running **valgrind** on your program for each test.
+* `-valgrind` - check your program for memory leaks by running **valgrind** on your program for each test.
 
 **NOTE**: This will only work if you have **valgrind** installed on your machine. There are some known problems with **valgrind** on Mac OS X so the behavior may be different than when used on a Linux machine.
 
-`-v` - enable `-v` option for valgrind to get more verbose output
+* `-v` - enable `-v` option for valgrind to get more verbose output
 
-`-sr` - enable `--show-reachable=yes` option for valgrind
+* `-sr` - enable `--show-reachable=yes` option for valgrind
 
-`-stderr` - show messages to stderr. By default, stderr messages from the program will not show when using runSuite.
+* `-stderr` - show messages to stderr. By default, stderr messages from the program will not show when using runSuite.
 
 ## createSuite:
 
