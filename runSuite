@@ -74,7 +74,7 @@ while read fileStem; do
     tempFile=`mktemp -t temp`
     echo -e "${WHITE}Running test: ${fileStem}...${DEFAULT}"
     # Check for memory errors using valgrind if option is enabled 
-    if [ ${runValgrind} = true]; then
+    if [ ${runValgrind} = true ]; then
         if [ ${verbose} = true ]; then
             valgrind --leak-check=full -v "${program}" < "${fileStem}.in" &> "${fileStem}.valg"
         elif [ ${showReachable} = true ]; then 
