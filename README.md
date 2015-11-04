@@ -2,6 +2,8 @@
 
 Testing script  made to test small C++ programs using bash.
 
+Please star if you benefited from this script!
+
 Contains: 
 
 * [runSuite](#runsuite) - the actual testing script
